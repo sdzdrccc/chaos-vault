@@ -1,4 +1,4 @@
-import { esc } from "./config.js";
+import { esc } from "../config.js";
 
 let modalSubmit = null;
 

@@ -37,6 +37,20 @@ export function defaultLocalIfMissing() {
   return defaultState();
 }
 
+export function hasUserData(state) {
+  if (!state) return false;
+  if (state.inbox?.length) return true;
+  if (state.home?.continues?.length) return true;
+  for (const s of Object.values(state.skills || {})) {
+    if (s.phase || s.note) return true;
+    if (s.goals?.length || s.materials?.length || s.checklist?.length || s.archive?.length) return true;
+  }
+  for (const m of Object.values(state.media || {})) {
+    if (m.want?.length || m.doing?.length || m.done?.length) return true;
+  }
+  return false;
+}
+
 export function ensureDomains(state) {
   for (const s of SKILLS) {
     if (!state.skills[s]) {

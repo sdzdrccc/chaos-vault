@@ -34,7 +34,11 @@ export function hasDir() {
 }
 
 export async function fetchText(path) {
-  const url = `${CONTENT_BASE}/${path}`;
+  const encoded = path
+    .split("/")
+    .map((seg) => encodeURIComponent(seg))
+    .join("/");
+  const url = `${CONTENT_BASE}/${encoded}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`${path} ${res.status}`);
   return res.text();

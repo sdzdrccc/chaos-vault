@@ -1,5 +1,11 @@
 import { esc } from "./config.js";
-import { loadLocal, saveLocal, resetLocal, defaultLocalIfMissing } from "./state.js";
+import {
+  loadLocal,
+  saveLocal,
+  resetLocal,
+  defaultLocalIfMissing,
+  hasUserData,
+} from "./state.js";
 import {
   supportsFS,
   hasDir,
@@ -141,18 +147,22 @@ document.getElementById("import-file").addEventListener("change", async (e) => {
 async function boot() {
   initModal();
 
-  // 1) localStorage session wins if present
+  let fromTree = null;
+  try {
+    fromTree = await loadFromContentTree();
+  } catch {
+    fromTree = null;
+  }
+
   const local = loadLocal();
-  if (localStorage.getItem("learning-workbench-v3")) {
+  // Prefer live content/ unless the user already has real edits in localStorage
+  if (hasUserData(local)) {
     ctx.state = local;
+  } else if (fromTree) {
+    ctx.state = fromTree;
+    saveLocal(ctx.state);
   } else {
-    // 2) first visit: try content/ over HTTP, else empty defaults
-    try {
-      ctx.state = await loadFromContentTree();
-      saveLocal(ctx.state);
-    } catch {
-      ctx.state = defaultLocalIfMissing();
-    }
+    ctx.state = defaultLocalIfMissing();
   }
 
   render();
