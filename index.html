@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="学习工作台：技能清单与媒体进度，数据以 Markdown 为源" />
+  <title>学习工作台</title>
+  <link rel="stylesheet" href="./css/main.css" />
+</head>
+<body>
+  <div id="app" class="shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main">
+      <header class="topbar" id="topbar"></header>
+      <div class="content" id="content"></div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h3 id="modal-title">新增</h3>
+      <p class="hint" id="modal-hint"></p>
+      <div class="form-grid" id="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="modal-cancel">取消</button>
+        <button type="button" class="btn primary" id="modal-ok">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="import-file" accept="application/json,.json" hidden />
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
