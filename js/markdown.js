@@ -1,4 +1,4 @@
-import { SKILLS, MEDIA, MATERIAL_TYPES, uid } from "./config.js";
+import { SKILLS, MEDIA, MATERIAL_TYPES, LLM_PLATFORM_TYPES, LLM_REGIONS, uid } from "./config.js";
 
 function mdCheck(text, done) {
   return `- [${done ? "x" : " "}] ${text}`;
@@ -42,6 +42,7 @@ export function serializeHome(state) {
     : "- [ ] 待添加";
   const skillLinks = SKILLS.map((s) => `- [${s}](01-技能/${s}/00-总览.md)`).join("\n");
   const mediaLinks = MEDIA.map((m) => `- [${m}](02-媒体/${m}.md)`).join("\n");
+  const mediaExtra = `- [修仙游戏目录](02-媒体/_修仙游戏目录.md)`;
   return `# 学习工作台 · 首页
 
 | 指标 | 数量 |
@@ -62,6 +63,7 @@ ${skillLinks}
 ## 媒体
 
 ${mediaLinks}
+${mediaExtra}
 
 ## 入口
 
@@ -439,4 +441,165 @@ export function homeStats(state) {
     media += state.media[m].want.length + state.media[m].doing.length;
   }
   return { mat, todo, media, inbox: state.inbox.length };
+}
+
+export function serializeLlmPlatforms(platforms) {
+  const list = platforms?.length
+    ? platforms
+        .map((p) => {
+          const models = (p.models || []).length
+            ? `models:\n${(p.models || []).map((m) => `  - ${m}`).join("\n")}`
+            : "models:";
+          return [
+            `### ${p.name || "未命名"}`,
+            `- type: ${p.type || "其他"}`,
+            `- region: ${p.region || "国外"}`,
+            `- url: ${p.baseUrl || ""}`,
+            `- site: ${p.site || ""}`,
+            `- ${models}`,
+            `- note: ${p.note || ""}`,
+          ].join("\n");
+        })
+        .join("\n\n")
+    : `### （暂无平台）
+
+- type: 官方
+- region: 国外
+- url:
+- site:
+- models:
+- note:`;
+
+  return `# 大模型 · 平台收藏
+
+> 账号与 API 接口备忘。请勿在此保存 API Key 明文（Key 见 平台.keys.local.md）。
+
+## 平台列表
+
+${list}
+`;
+}
+
+/** Keys only — keep out of git-tracked 平台.md */
+export function serializeLlmKeys(platforms) {
+  const list = (platforms || [])
+    .filter((p) => p.key)
+    .map((p) => [`### ${p.name || "未命名"}`, `- key: ${p.key}`].join("\n"))
+    .join("\n\n");
+  return `# 大模型 · API Keys（本地）
+
+> 本文件应被 .gitignore 忽略（*.local）。勿提交到 GitHub。
+
+## Keys
+
+${list || "### （空）\n\n- key:"}
+`;
+}
+
+export function parseLlmKeys(md) {
+  const map = new Map();
+  if (!md) return map;
+  const lines = String(md).split(/\r?\n/);
+  let name = null;
+  for (const line of lines) {
+    const h3 = line.match(/^###\s+(.+?)\s*$/);
+    if (h3) {
+      name = h3[1];
+      continue;
+    }
+    const kv = line.match(/^[-*]\s+key\s*:\s*(.*)$/i);
+    if (kv && name) map.set(name, kv[1].trim());
+  }
+  return map;
+}
+
+export function applyLlmKeys(platforms, keyMap) {
+  if (!keyMap || !keyMap.size) return platforms || [];
+  return (platforms || []).map((p) => ({
+    ...p,
+    key: keyMap.get(p.name) || p.key || "",
+  }));
+}
+
+export function parseLlmPlatforms(md) {
+  const platforms = [];
+  if (!md) return platforms;
+  const lines = String(md).split(/\r?\n/);
+  let cur = null;
+  let inModels = false;
+
+  const flush = () => {
+    if (cur && cur.name && !isPlaceholder(cur.name) && !/^（?暂无/.test(cur.name)) {
+      platforms.push({
+        id: cur.id || uid(),
+        name: cur.name,
+        type: LLM_PLATFORM_TYPES.includes(cur.type) ? cur.type : "其他",
+        region: LLM_REGIONS.includes(cur.region) ? cur.region : "国外",
+        baseUrl: cur.baseUrl || "",
+        site: cur.site || "",
+        models: (cur.models || []).filter(Boolean),
+        note: cur.note || "",
+      });
+    }
+    cur = null;
+    inModels = false;
+  };
+
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, "");
+    const h3 = line.match(/^###\s+(.+?)\s*$/);
+    if (h3) {
+      flush();
+      cur = {
+        id: uid(),
+        name: h3[1],
+        type: "官方",
+        region: "国外",
+        baseUrl: "",
+        site: "",
+        models: [],
+        note: "",
+      };
+      inModels = false;
+      continue;
+    }
+    if (!cur) continue;
+
+    const modelBullet = line.match(/^\s{2,}[-*]\s+(.+)$/);
+    if (inModels && modelBullet) {
+      cur.models.push(modelBullet[1].trim());
+      continue;
+    }
+    inModels = false;
+
+    const kv = line.match(/^[-*]\s+(type|region|url|site|models|note)\s*:\s*(.*)$/i);
+    if (kv) {
+      const key = kv[1].toLowerCase();
+      const val = kv[2].trim();
+      if (key === "type") cur.type = val || "其他";
+      else if (key === "region") cur.region = val || "国外";
+      else if (key === "url") cur.baseUrl = val;
+      else if (key === "site") cur.site = val;
+      else if (key === "note") cur.note = val;
+      else if (key === "models") {
+        inModels = true;
+        if (val) {
+          cur.models.push(
+            ...val
+              .split(/[,，]/)
+              .map((s) => s.trim())
+              .filter(Boolean),
+          );
+        }
+      }
+      continue;
+    }
+
+    if (inModels && line.trim() && !line.startsWith("#")) {
+      // allow plain model lines under models:
+      cur.models.push(line.replace(/^[-*]\s*/, "").trim());
+    }
+  }
+  flush();
+  return platforms;
 }

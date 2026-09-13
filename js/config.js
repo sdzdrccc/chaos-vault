@@ -1,5 +1,5 @@
 export const SKILLS = ["大模型", "日语", "虚幻引擎", "声乐", "六爻", "健身", "素描"];
-export const MEDIA = ["动漫", "书籍", "电影", "小说", "音乐"];
+export const MEDIA = ["动漫", "书籍", "电影", "小说", "音乐", "游戏"];
 export const MATERIAL_TYPES = [
   "课程/视频",
   "书籍/PDF",
@@ -8,6 +8,23 @@ export const MATERIAL_TYPES = [
   "练习参考",
   "其他",
 ];
+
+export const LLM_PLATFORM_TYPES = ["官方", "中转", "聚合", "本地", "其他"];
+export const LLM_REGIONS = ["国内", "国外"];
+
+export function emptyLlmPlatform() {
+  return {
+    id: "",
+    name: "",
+    type: "官方",
+    region: "国外",
+    baseUrl: "",
+    site: "",
+    key: "",
+    models: [],
+    note: "",
+  };
+}
 
 export const STORAGE_KEY = "learning-workbench-v3";
 export const CONTENT_BASE = "./content";
@@ -31,7 +48,15 @@ export function today() {
 }
 
 export function emptySkill() {
-  return { phase: "", goals: [], note: "", materials: [], checklist: [], archive: [] };
+  return {
+    phase: "",
+    goals: [],
+    note: "",
+    materials: [],
+    checklist: [],
+    archive: [],
+    llmPlatforms: [],
+  };
 }
 
 export function emptyMedia() {

@@ -1,4 +1,4 @@
-import { esc } from "./config.js";
+import { esc, SKILLS, MEDIA } from "./config.js";
 import {
   loadLocal,
   saveLocal,
@@ -18,6 +18,7 @@ import {
   exportMarkdownBundle,
 } from "./storage.js";
 import { initModal } from "./ui/modal.js";
+import { renderLlm, bindLlm } from "./ui/llm.js";
 import {
   renderSidebar,
   renderTopbar,
@@ -110,6 +111,12 @@ function render() {
   }
   if (route.kind === "skill") {
     renderSidebar(ctx);
+    if (route.name === "大模型") {
+      renderTopbar(ctx, "大模型", "API 平台与中转站收藏");
+      document.getElementById("content").innerHTML = renderLlm(ctx);
+      bindLlm(ctx);
+      return;
+    }
     renderTopbar(ctx, route.name, "总览 · 材料 · 清单");
     document.getElementById("content").innerHTML = renderSkill(ctx);
     bindSkill(ctx);
@@ -117,7 +124,7 @@ function render() {
   }
   if (route.kind === "media") {
     renderSidebar(ctx);
-    renderTopbar(ctx, route.name, "想看 / 在看 / 看完");
+    renderTopbar(ctx, route.name, route.name === "游戏" ? "想玩 / 在玩 / 通关" : "想看 / 在看 / 看完");
     document.getElementById("content").innerHTML = renderMedia(ctx);
     bindMedia(ctx);
   }
@@ -144,6 +151,78 @@ document.getElementById("import-file").addEventListener("change", async (e) => {
   e.target.value = "";
 });
 
+function mediaIsEmpty(m) {
+  return !m || (!(m.want?.length || m.doing?.length || m.done?.length));
+}
+
+function skillIsEmpty(s) {
+  return (
+    !s ||
+    (!s.phase &&
+      !s.note &&
+      !s.goals?.length &&
+      !s.materials?.length &&
+      !s.checklist?.length &&
+      !s.archive?.length &&
+      !s.llmPlatforms?.length)
+  );
+}
+
+function syncLlmPlatforms(localList, treeList) {
+  const byName = new Map((localList || []).map((p) => [p.name, { ...p }]));
+  for (const t of treeList || []) {
+    const cur = byName.get(t.name);
+    if (!cur) {
+      byName.set(t.name, { ...t });
+      continue;
+    }
+    // fill schema fields from curated content; keep local keys/edits
+    if (!cur.region) cur.region = t.region || "国外";
+    if (!cur.site) cur.site = t.site || "";
+    if (!cur.baseUrl) cur.baseUrl = t.baseUrl || "";
+    if (!cur.type || cur.type === "其他") cur.type = t.type || cur.type;
+    if (!cur.models?.length && t.models?.length) cur.models = [...t.models];
+    // if local never had region (old cache treated everything as 国外),
+    // prefer tree region when local is default 国外 and tree says 国内
+    if (t.region && cur.region === "国外" && t.region === "国内" && !cur.__regionTouched) {
+      cur.region = t.region;
+    }
+    byName.set(t.name, cur);
+  }
+  return [...byName.values()];
+}
+
+function seedMissingDomains(local, fromTree) {
+  if (!fromTree) return local;
+  const state = {
+    ...local,
+    media: { ...local.media },
+    skills: { ...local.skills },
+  };
+  for (const m of MEDIA) {
+    if (mediaIsEmpty(state.media[m]) && !mediaIsEmpty(fromTree.media?.[m])) {
+      state.media[m] = fromTree.media[m];
+    }
+  }
+  for (const s of SKILLS) {
+    if (skillIsEmpty(state.skills[s]) && !skillIsEmpty(fromTree.skills?.[s])) {
+      state.skills[s] = fromTree.skills[s];
+      continue;
+    }
+    if (s === "大模型") {
+      const treePlats = fromTree.skills?.[s]?.llmPlatforms || [];
+      const localPlats = state.skills[s]?.llmPlatforms || [];
+      if (treePlats.length) {
+        state.skills[s] = {
+          ...state.skills[s],
+          llmPlatforms: syncLlmPlatforms(localPlats, treePlats),
+        };
+      }
+    }
+  }
+  return state;
+}
+
 async function boot() {
   initModal();
 
@@ -157,7 +236,8 @@ async function boot() {
   const local = loadLocal();
   // Prefer live content/ unless the user already has real edits in localStorage
   if (hasUserData(local)) {
-    ctx.state = local;
+    ctx.state = seedMissingDomains(local, fromTree);
+    saveLocal(ctx.state);
   } else if (fromTree) {
     ctx.state = fromTree;
     saveLocal(ctx.state);

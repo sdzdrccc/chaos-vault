@@ -44,6 +44,7 @@ export function hasUserData(state) {
   for (const s of Object.values(state.skills || {})) {
     if (s.phase || s.note) return true;
     if (s.goals?.length || s.materials?.length || s.checklist?.length || s.archive?.length) return true;
+    if (s.llmPlatforms?.length) return true;
   }
   for (const m of Object.values(state.media || {})) {
     if (m.want?.length || m.doing?.length || m.done?.length) return true;
@@ -61,7 +62,11 @@ export function ensureDomains(state) {
         materials: [],
         checklist: [],
         archive: [],
+        llmPlatforms: [],
       };
+    }
+    if (s === "大模型" && !state.skills[s].llmPlatforms) {
+      state.skills[s].llmPlatforms = [];
     }
   }
   for (const m of MEDIA) {

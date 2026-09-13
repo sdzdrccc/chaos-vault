@@ -6,6 +6,7 @@ Desktop.ini
 # Editors
 .vscode/
 .idea/
+.obsidian/
 *.swp
 
 # Node
@@ -15,6 +16,11 @@ package-lock.json
 
 # Local
 *.local
+*.local.md
 .cache/
 tmp/
 temp/
+
+# Secrets
+**/平台.keys.local.md
+**/*keys.local*

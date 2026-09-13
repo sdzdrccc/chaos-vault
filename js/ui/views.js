@@ -5,7 +5,7 @@ import { openModal } from "./modal.js";
 function go(ctx, kind, name = null) {
   ctx.route = { kind, name };
   ctx.skillTab = "材料";
-  ctx.mediaTab = "doing";
+  ctx.mediaTab = name === "游戏" ? "want" : "doing";
   ctx.render();
 }
 
@@ -45,7 +45,7 @@ export function renderSidebar(ctx) {
       const kind = btn.dataset.nav;
       ctx.route = { kind, name: btn.dataset.name || null };
       ctx.skillTab = "材料";
-      ctx.mediaTab = "doing";
+      ctx.mediaTab = btn.dataset.name === "游戏" ? "want" : "doing";
       ctx.render();
     };
   });
@@ -126,10 +126,14 @@ export function renderHome(ctx) {
             const openC = sk.checklist.filter((x) => !x.done).length;
             const doneG = sk.goals.filter((x) => x.done).length;
             const pct = sk.goals.length ? Math.round((doneG / sk.goals.length) * 100) : 0;
+            const sub =
+              s === "大模型"
+                ? `API 平台 ${(sk.llmPlatforms || []).length} 个`
+                : `${sk.phase || "未设阶段"} · 材料 ${openM} · 清单 ${openC}`;
             return `<button type="button" class="home-link" data-go-kind="skill" data-go-name="${esc(s)}">
               <div>
                 <div class="t">${esc(s)}</div>
-                <div class="d">${esc(sk.phase || "未设阶段")} · 材料 ${openM} · 清单 ${openC}</div>
+                <div class="d">${esc(sub)}</div>
                 <div class="progress-bar"><i style="width:${pct}%"></i></div>
               </div>
               <span class="chip">打开</span>
@@ -569,16 +573,29 @@ export function bindSkill(ctx) {
 export function renderMedia(ctx) {
   const name = ctx.route.name;
   const md = ctx.state.media[name];
-  const tabs = [
-    { key: "want", label: "想看" },
-    { key: "doing", label: "在看" },
-    { key: "done", label: "看完" },
-  ];
+  const isGame = name === "游戏";
+  const tabs = isGame
+    ? [
+        { key: "want", label: "想玩" },
+        { key: "doing", label: "在玩" },
+        { key: "done", label: "通关" },
+      ]
+    : [
+        { key: "want", label: "想看" },
+        { key: "doing", label: "在看" },
+        { key: "done", label: "看完" },
+      ];
   const rows = (md[ctx.mediaTab] || []).filter((r) =>
     matchQ(ctx, r.title, r.note, r.comment, r.progress),
   );
   const progressLabel =
-    name === "动漫" ? "进度（第 N 集/季）" : name === "书籍" || name === "小说" ? "进度（%）" : "进度";
+    name === "动漫"
+      ? "进度（第 N 集/季）"
+      : name === "书籍" || name === "小说"
+        ? "进度（%）"
+        : name === "游戏"
+          ? "进度（境界/时长）"
+          : "进度";
 
   let table;
   if (!rows.length) table = `<div class="empty">这一栏还是空的</div>`;
@@ -605,8 +622,8 @@ export function renderMedia(ctx) {
           <td>${esc(r.progress || "—")}</td>
           <td>${esc(r.note || "")}</td>
           <td><div class="row-actions">
-            ${ctx.mediaTab === "want" ? `<button type="button" class="btn sm" data-media-move="${r.id}" data-from="want" data-to="doing">→在看</button>` : ""}
-            ${ctx.mediaTab === "doing" ? `<button type="button" class="btn sm" data-media-move="${r.id}" data-from="doing" data-to="done">完成</button>` : ""}
+            ${ctx.mediaTab === "want" ? `<button type="button" class="btn sm" data-media-move="${r.id}" data-from="want" data-to="doing">${isGame ? "→在玩" : "→在看"}</button>` : ""}
+            ${ctx.mediaTab === "doing" ? `<button type="button" class="btn sm" data-media-move="${r.id}" data-from="doing" data-to="done">${isGame ? "通关" : "完成"}</button>` : ""}
             <button type="button" class="icon-btn" data-media-edit="${r.id}" data-from="${ctx.mediaTab}">✎</button>
             <button type="button" class="icon-btn" data-media-del="${r.id}" data-from="${ctx.mediaTab}">×</button>
           </div></td>
@@ -617,7 +634,10 @@ export function renderMedia(ctx) {
     <div class="tabs">${tabs.map((t) => `<button type="button" class="tab ${t.key === ctx.mediaTab ? "active" : ""}" data-media-tab="${t.key}">${t.label} · ${md[t.key].length}</button>`).join("")}</div>
     <div class="card">
       <div class="section-head">
-        <div><h3>${tabs.find((t) => t.key === ctx.mediaTab).label}</h3><p>状态只有三档</p></div>
+        <div>
+          <h3>${tabs.find((t) => t.key === ctx.mediaTab).label}</h3>
+          <p>${isGame ? '追踪想玩/在玩/通关；完整分层目录见 <a href="./content/02-媒体/_修仙游戏目录.md" target="_blank" rel="noopener">修仙游戏目录</a>' : "状态只有三档"}</p>
+        </div>
         <button type="button" class="btn sm primary" id="media-add">新增</button>
       </div>
       ${table}

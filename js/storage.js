@@ -6,12 +6,17 @@ import {
   parseMaterials,
   parseChecklist,
   parseMedia,
+  parseLlmPlatforms,
+  parseLlmKeys,
+  applyLlmKeys,
   serializeHome,
   serializeInbox,
   serializeSkillOverview,
   serializeSkillMaterials,
   serializeSkillChecklist,
   serializeMedia,
+  serializeLlmPlatforms,
+  serializeLlmKeys,
 } from "./markdown.js";
 
 export const supportsFS =
@@ -88,6 +93,19 @@ export async function loadFromContentTree() {
         } catch {
           /* optional */
         }
+        if (s === "大模型") {
+          try {
+            skill.llmPlatforms = parseLlmPlatforms(await fetchText("01-技能/大模型/平台.md"));
+          } catch {
+            skill.llmPlatforms = skill.llmPlatforms || [];
+          }
+          try {
+            const keyMap = parseLlmKeys(await fetchText("01-技能/大模型/平台.keys.local.md"));
+            skill.llmPlatforms = applyLlmKeys(skill.llmPlatforms, keyMap);
+          } catch {
+            /* keys optional */
+          }
+        }
       }),
     );
   }
@@ -117,6 +135,10 @@ export function serializeAll(state) {
     files[`01-技能/${s}/00-总览.md`] = serializeSkillOverview(s, state.skills[s]);
     files[`01-技能/${s}/材料.md`] = serializeSkillMaterials(s, state.skills[s]);
     files[`01-技能/${s}/清单.md`] = serializeSkillChecklist(s, state.skills[s]);
+    if (s === "大模型") {
+      files[`01-技能/大模型/平台.md`] = serializeLlmPlatforms(state.skills[s].llmPlatforms || []);
+      files[`01-技能/大模型/平台.keys.local.md`] = serializeLlmKeys(state.skills[s].llmPlatforms || []);
+    }
   }
   for (const m of MEDIA) {
     files[`02-媒体/${m}.md`] = serializeMedia(m, state.media[m]);
@@ -202,6 +224,19 @@ export async function loadFromFolderHandle() {
       Object.assign(state.skills[s], parseChecklist(await read(`01-技能/${s}/清单.md`)));
     } catch {
       /* ignore */
+    }
+    if (s === "大模型") {
+      try {
+        state.skills[s].llmPlatforms = parseLlmPlatforms(await read("01-技能/大模型/平台.md"));
+      } catch {
+        state.skills[s].llmPlatforms = [];
+      }
+      try {
+        const keyMap = parseLlmKeys(await read("01-技能/大模型/平台.keys.local.md"));
+        state.skills[s].llmPlatforms = applyLlmKeys(state.skills[s].llmPlatforms, keyMap);
+      } catch {
+        /* optional */
+      }
     }
   }
   for (const m of MEDIA) {
