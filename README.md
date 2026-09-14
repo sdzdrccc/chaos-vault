@@ -46,7 +46,7 @@ npm run dev
 | 数据 | `content/**/*.md` | Git 可 diff；人可直接改；未来 SSG 可复用 |
 | 本地读写 | fetch + File System Access API | 服务端读 md；授权后写回文件夹 |
 | 会话缓存 | localStorage | 未连文件夹时的编辑暂存 |
-| 部署 | 任意静态托管 | GitHub Pages / Cloudflare Pages / Nginx |
+| 部署 | 任意静态托管 | 见 [docs/DEPLOY.md](docs/DEPLOY.md)：GitHub Pages / Cloudflare Pages / Vercel / Netlify |
 
 ### 读写约定
 
@@ -54,12 +54,9 @@ npm run dev
 - **写**：改动 → localStorage；若已连接文件夹则同步写回 md。
 - **形态**：技能 = 总览/材料/清单三文件；媒体 = 单文件三段（在看/想看/看完）。
 
-### 后续做成网站（待定）
+### 后续做成网站
 
-静态部署即可上线（只读）。若要多端写入，可再加：
-
-1. 对象存储 + 签名上传，或
-2. 极简后端（Cloudflare Workers / Vercel Functions）维护同一套 md 结构。
+静态部署即可上线（只读）。外网可写、函数后端、安全注意等，见 **[docs/DEPLOY.md](docs/DEPLOY.md)**。
 
 当前仓库已按「md 即 API 契约」组织，不必重写数据层。
 
